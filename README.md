@@ -128,6 +128,14 @@ One-time GitHub setup:
 5. Re-run the workflow (or push a new commit).
 
 The workflow sets `VITE_BASE_PATH` automatically to `/<repo-name>/` so Vite assets load correctly on Pages project URLs.
+It also sets `VITE_SITE_URL` so Supabase magic links redirect back to the deployed Pages URL instead of localhost.
+
+In Supabase, add the deployed Pages URL to your allowed redirect URLs:
+
+- **Authentication -> URL Configuration -> Redirect URLs**
+- Add `https://<your-github-username>.github.io/<repo-name>/`
+
+For local development, localhost redirecting is normal and expected.
 
 Can Netlify handle a container?
 

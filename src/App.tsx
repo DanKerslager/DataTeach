@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ClassSelector } from './components/ClassSelector'
 import { ProgressPanel } from './components/ProgressPanel'
 import { TopicTree } from './components/TopicTree'
@@ -15,6 +15,9 @@ function App() {
 
   const [selectedClassId, setSelectedClassId] = useState<UUID | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [emailInput, setEmailInput] = useState('')
+  const [authMessage, setAuthMessage] = useState<string | null>(null)
+  const [sendingMagicLink, setSendingMagicLink] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [darkMode, setDarkMode] = useState(true)
 
@@ -36,11 +39,47 @@ function App() {
 
   const withErrorHandling = async (action: () => Promise<void>) => {
     setError(null)
+    setAuthMessage(null)
     try {
       await action()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred.')
     }
+  }
+
+  const handleSignIn = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const email = emailInput.trim()
+    if (!email || sendingMagicLink) return
+
+    setSendingMagicLink(true)
+    void withErrorHandling(async () => {
+      try {
+        await authService.signInWithMagicLink(email)
+        setAuthMessage('Check your email for a sign-in link.')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : ''
+        const status = typeof err === 'object' && err && 'status' in err ? (err as { status?: number }).status : undefined
+
+        if (status === 429 || message.includes('Too Many Requests')) {
+          setAuthMessage('Supabase rate-limited the request. Wait a minute before trying again.')
+          return
+        }
+
+        throw err
+      }
+    }).finally(() => {
+      setSendingMagicLink(false)
+    })
+  }
+
+  const handleSignOut = () => {
+    void withErrorHandling(async () => {
+      await authService.signOut()
+      setUserEmail(null)
+      setAuthMessage('Signed out.')
+    })
   }
 
   const handleCreateClass = () => {
@@ -117,15 +156,52 @@ function App() {
             onArchive={handleArchiveClass}
           />
 
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span>{hasSupabaseConfig ? userEmail ?? 'Authenticated' : 'Demo mode'}</span>
-            <button
-              type="button"
-              className="rounded border border-slate-300 px-2 py-1 dark:border-slate-700"
-              onClick={() => setDarkMode((prev) => !prev)}
-            >
-              {darkMode ? 'Light' : 'Dark'}
-            </button>
+          <div className="flex flex-col items-end gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2">
+              {hasSupabaseConfig ? (
+                userEmail ? (
+                  <>
+                    <span>{userEmail}</span>
+                    <button
+                      type="button"
+                      className="rounded border border-slate-300 px-2 py-1 dark:border-slate-700"
+                      onClick={handleSignOut}
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <form className="flex items-center gap-2" onSubmit={handleSignIn}>
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={emailInput}
+                      onChange={(event) => setEmailInput(event.target.value)}
+                      className="w-44 rounded border border-slate-300 bg-white px-2 py-1 text-slate-900 outline-none placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    <button
+                      type="submit"
+                      disabled={sendingMagicLink}
+                      className="rounded bg-indigo-600 px-2 py-1 font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {sendingMagicLink ? 'Sending…' : 'Send magic link'}
+                    </button>
+                  </form>
+                )
+              ) : (
+                <span>Demo mode</span>
+              )}
+
+              <button
+                type="button"
+                className="rounded border border-slate-300 px-2 py-1 dark:border-slate-700"
+                onClick={() => setDarkMode((prev) => !prev)}
+              >
+                {darkMode ? 'Light' : 'Dark'}
+              </button>
+            </div>
+
+            {authMessage && <span className="text-emerald-600 dark:text-emerald-400">{authMessage}</span>}
           </div>
         </div>
       </header>

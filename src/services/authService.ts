@@ -1,5 +1,12 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
 
+function normalizeSiteUrl(rawUrl: string | undefined): string | undefined {
+  const trimmed = rawUrl?.trim()
+  return trimmed && trimmed.length > 0 ? trimmed.replace(/\/+$/, '') : undefined
+}
+
+const siteUrl = normalizeSiteUrl(import.meta.env.VITE_SITE_URL) ?? window.location.origin
+
 export const authService = {
   async getUserId(): Promise<string | null> {
     if (!hasSupabaseConfig || !supabase) return 'demo-local-user'
@@ -17,7 +24,7 @@ export const authService = {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: siteUrl,
       },
     })
 
