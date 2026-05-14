@@ -1,0 +1,7 @@
+services:
+  datateach:
+    build: .
+    ports:
+      - '4173:80'
+    env_file:
+      - .env
