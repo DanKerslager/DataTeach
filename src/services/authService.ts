@@ -1,6 +1,16 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
 
 export const authService = {
+  async getUserId(): Promise<string | null> {
+    if (!hasSupabaseConfig || !supabase) return 'demo-local-user'
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    return user?.id ?? null
+  },
+
   async signInWithMagicLink(email: string): Promise<void> {
     if (!hasSupabaseConfig || !supabase) return
 

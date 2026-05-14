@@ -1,4 +1,5 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
+import { authService } from './authService'
 import { mockStore } from './mockData'
 import type { Topic, UUID } from '../types/models'
 
@@ -27,9 +28,14 @@ export const topicsService = {
       return mockStore.createTopic({ title, parent_id: parentId, sort_order: sortOrder })
     }
 
+    const userId = await authService.getUserId()
+    if (!userId) {
+      throw new Error('Please sign in before creating topics.')
+    }
+
     const { data, error } = await supabase
       .from(table)
-      .insert({ title, parent_id: parentId, sort_order: sortOrder })
+      .insert({ title, parent_id: parentId, sort_order: sortOrder, user_id: userId })
       .select('*')
       .single()
 

@@ -1,4 +1,5 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
+import { authService } from './authService'
 import { mockStore } from './mockData'
 import type { Classroom, UUID } from '../types/models'
 
@@ -26,7 +27,12 @@ export const classesService = {
       return mockStore.createClass(name)
     }
 
-    const { data, error } = await supabase.from(table).insert({ name }).select('*').single()
+    const userId = await authService.getUserId()
+    if (!userId) {
+      throw new Error('Please sign in before creating classes.')
+    }
+
+    const { data, error } = await supabase.from(table).insert({ name, user_id: userId }).select('*').single()
     if (error) throw error
     return data as Classroom
   },
